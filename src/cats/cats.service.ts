@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCatsDTO } from './dto/create-cats.dto';
 
-interface Cats {
+interface Cats {//would rename to cat- as the interface represents single cat.
     readonly id: string;
     name: string;
     soul: number;
@@ -30,8 +30,14 @@ export class CatsService {
         }
     ];
 
+    constructor() {
+        setTimeout(() => {
+            console.log("Im a cats service instance!");
+        }, 1000);
+    }
+
     async addCat(createCatsDTO: CreateCatsDTO): Promise<Cats> {
-        await this.cats.push(createCatsDTO);
+        await this.cats.push(createCatsDTO);//you don't really need to await here- push is syncrouns
         return this.cats.at(-1);
     }
 
@@ -66,3 +72,6 @@ export class CatsService {
 
     }
 }
+/** All functions here are not really async functions, so for now it makes sense to decalre them as sync.
+* In the next exercise they will be async function, so you don't have to change it. But just letting you know:)
+*/

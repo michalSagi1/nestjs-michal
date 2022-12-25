@@ -74,10 +74,15 @@ export class DogsController {
     @Post('/play')
     async play(
     ) {
+        /**This function should be in DogService- because it performs a lot of logical actions, and its very related to dogs behavior.
+        * We usually use controllers to organize data and activate service function (service should take care of login and DB).
+        */
+
+        //I think I you should have a function in cats service called "getRandomCat";
         function getRndInteger(min, max) {
             return Math.floor(Math.random() * (max - min)) + min;
         }
-        const dog = await this.dogsService.getDog("1")
+        const dog = await this.dogsService.getDog("1")//Im sure you wanted to get this as post param and pass it ;)
 
         const cats = await this.catsService.getCats()
         if (cats.length === 0) {
@@ -97,7 +102,7 @@ export class DogsController {
             console.log(upDog);
             const upCat = await this.catsService.editCat(cat.id, "", cat.soul - 1)
             console.log(upCat);
-            if (cat.soul === 1) {
+            if (cat.soul === 1) {//I think this is a cats logic- should be in service:)
                 const delCat = await this.catsService.deleteCat(cat.id)
                 console.log("delete....", delCat);
 

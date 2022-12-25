@@ -10,7 +10,7 @@ import { DogsModule } from './dogs/dogs.module';
 
 @Module({
   imports: [CatsModule, DogsModule],
-  controllers: [AppController, CatsController, DogsController],
-  providers: [AppService, CatsService, DogsService],
+  controllers: [AppController, CatsController, DogsController],//Cats & Dogs controllers should be imported in their modules.
+  providers: [AppService, CatsService, DogsService],//Cats & Dogs services should be imported in their modules.
 })
 export class AppModule { }
