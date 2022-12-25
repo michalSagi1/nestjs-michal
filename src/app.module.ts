@@ -8,9 +8,10 @@ import { DogsController } from './dogs/dogs.controller';
 import { DogsService } from './dogs/dogs.service';
 import { DogsModule } from './dogs/dogs.module';
 
+
 @Module({
   imports: [CatsModule, DogsModule],
-  controllers: [AppController, CatsController, DogsController],//Cats & Dogs controllers should be imported in their modules.
-  providers: [AppService, CatsService, DogsService],//Cats & Dogs services should be imported in their modules.
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule { }

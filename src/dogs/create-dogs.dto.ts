@@ -1,5 +1,13 @@
+import { IsString, Length } from "class-validator";
+
 export class CreateDogsDTO {
-    readonly id: string;
+
+    @IsString()
+    id: string;
+
+    @IsString()
+    @Length(3, 50)
     name: string;
-    count: number;
+
+    count: number = 0;
 }
