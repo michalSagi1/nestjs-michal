@@ -1,81 +1,110 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { count } from 'console';
 import { CatsService } from 'src/cats/cats.service';
+import { Cat } from 'src/typeorm/entities/Cat';
+import { Chase, Success } from 'src/typeorm/entities/Chase';
+import { Dog } from 'src/typeorm/entities/Dog';
+import { Repository } from 'typeorm';
 import { CreateDogsDTO } from './create-dogs.dto';
 
-type Dog = {
-    readonly id: string;
-    name: string;
-    count: number;
-}
+
 @Injectable()
 export class DogsService {
 
-    constructor(private catsService: CatsService) { }
+    constructor(private catsService: CatsService,
+        @InjectRepository(Dog)
+        private dogRepository: Repository<Dog>,
+        @InjectRepository(Chase)
+        private chaseRepository: Repository<Chase>) { }
 
-    private dogs: Dog[] = [
-        {
-            id: "1",
-            name: 'Rex',
-            count: 0
-        },
-        {
-            id: "2",
-            name: 'Sky',
-            count: 0
 
-        },
-        {
-            id: "3",
-            name: 'Boxer',
-            count: 0
 
-        }
-    ];
-
-    async addDog(createDogsDTO: CreateDogsDTO): Promise<Dog> {
-        await this.dogs.push(createDogsDTO);
-        return this.dogs.at(-1);
+    async addDog(createDogsDTO: CreateDogsDTO) {
+        const newDog = await this.dogRepository.create({ ...createDogsDTO })
+        return await this.dogRepository.save(newDog)
     }
 
-    async getDog(dogID: string): Promise<Dog> {
-        const dog = this.dogs.find((dog) => dog.id === dogID);
+
+    async getDogById(id: number) {
+        const dog = await this.dogRepository.findOne({
+            where:
+                { id },
+            relations: ['chases']
+        })
         return dog
     }
+    async getDogAndSuccessById(id: number) {
+        const dog = await this.dogRepository.findOne({
+            where:
+                { id, chases: { success: Success.Yes } },
 
-    async getDogs(): Promise<Dog[]> {
-        return this.dogs;
+            relations: ['chases']
+
+        })
+        return dog
+
     }
-    async editDog(dogID: string, name: string, count: number): Promise<Dog> {
-        const dog = this.dogs.find((dog) => dog.id === dogID);
+    async getDogAndCatById(id: number) {
+        const resulte = await this.chaseRepository.createQueryBuilder('chase')
+            // .leftJoinAndSelect(Cat, "cat")
+            // .leftJoinAndSelect(Dog, "dog")
+
+            .select('catId')
+            .where(`dogId=${id}`)
+            .getMany()
+
+        return resulte
+
+
+    }
+
+
+
+    async getDogs() {
+        return await this.dogRepository.find({ relations: ['chases'] })
+    }
+
+
+    async updateDog(id: number, name: string, count: number) {
+        const dog = await this.dogRepository.findOne({
+            where:
+                { id }
+        })
         if (!dog) {
             throw new NotFoundException('dog does not exist!');
         }
-        const dogIndex = this.dogs.findIndex((dog) => dog.id === dogID);
-        const editedDog = { ...dog }
-        if (name) {
-            editedDog.name = name
+        if (!name && count === undefined) {
+            return 'NO UPDATED'
         }
-        if (count) {
-            editedDog.count = count
-        }
-        this.dogs[dogIndex] = editedDog
-        return this.dogs[dogIndex]
+
+        const upDog = this.dogRepository.update({ id }, { name, count })
+        return upDog;
     }
 
 
-    async deleteDog(dogID: string): Promise<any> {
-        const dogIndex = this.dogs.findIndex((dog) => dog.id === dogID);
-        return this.dogs.splice(dogIndex, 1)
+    async deleteDog(id: number) {
+        const dog = await this.dogRepository.findOne({
+            where:
+                { id }
+        })
+        if (!dog) {
+            return 'CAT NOT FOUND'
+        }
+        this.dogRepository.delete({ id })
+        return 'Dog is deleted'
+
+
 
     }
 
-    async play(dogID: string): Promise<any> {
+    async play(dogID: number) {
         function getRndInteger(min: number, max: number) {
             return Math.floor(Math.random() * (max - min)) + min;
         }
-        const dog = await this.getDog(dogID)
+        const dog = await this.getDogById(dogID)
 
-        const cat = await this.catsService.getRandomCat()
+        const cat = await this.catsService.getRandomCat_()
         if (!cat) {
             return "GAME OVER"
         }
@@ -84,15 +113,20 @@ export class DogsService {
             const success = getRndInteger(0, 2)
             console.log(success);
             if (success) {
-                const upDog = await this.editDog(dogID, "", dog.count + 1)
+                await this.updateDog(dogID, dog.name, dog.count + 1)
+                const upDog = await this.getDogById(dogID)
+
                 console.log(upDog);
-                const upCat = await this.catsService.editCat(cat.id, "", cat.soul - 1)
+                await this.catsService.updateCat(cat.id, cat.name, cat.soul - 1)
+                const upCat = await this.catsService.getCatById(cat.id)
+
                 console.log(upCat);
 
-                return ((upCat.soul === 0) ? `${upCat.name} is dead :/` : `${upCat.name} has ${upCat.soul} more souls!`)
-
+                this.createChase(upCat.id, upDog.id, Success.Yes)
+                return ((upCat.soul === 0) ? `${cat.name} is dead :/` : `${upCat.name} has ${upCat.soul} more souls!`)
             } else {
                 console.log(`the cat ${cat.name} is very lucky!`);
+                this.createChase(cat.id, dog.id, Success.No)
                 return `the cat ${cat.name} is very lucky!`
 
             }
@@ -100,5 +134,24 @@ export class DogsService {
 
     }
 
+
+    async createChase(idCat: number, idDog: number, success: Success) {
+        const dog = await this.dogRepository.findOne({
+            where:
+                { id: idDog }
+        })
+        if (!dog) {
+            return 'DOG NOT FOUND'
+        }
+        const cat = await this.catsService.getCatById(idCat)
+        console.log(cat);
+
+        if (!cat) {
+            return 'CAT NOT FOUND'
+        }
+        const newChase = this.chaseRepository.create({ cat, dog, success })
+        return await this.chaseRepository.save(newChase);
+
+    }
 }
 

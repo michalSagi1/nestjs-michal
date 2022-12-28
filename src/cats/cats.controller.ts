@@ -23,10 +23,24 @@ export class CatsController {
             cat: newCat,
         };
     }
-    @Get('/:catID')
-    async getCat(@Param('catID') catID: string) {
+    @Get('/cat/:dogID')
+    async getDogAndCats(@Param('dogID') dogID: number) {
 
-        const cat = await this.catsService.getCat(catID);
+        const dog = await this.catsService.getDogAndCatById(dogID);
+        if (!dog) {
+            throw new NotFoundException('Dog does not exist!');
+        }
+        return dog;
+    }
+    @Get('/success')
+    async getCatsSuccess() {
+        const cats = await this.catsService.getCatsSuccess()
+        return cats;
+    }
+    @Get('/get/:catID')
+    async getCat(@Param('catID') catID: number) {
+
+        const cat = await this.catsService.getCatById(catID);
         if (!cat) {
             throw new NotFoundException('Cat does not exist!');
         }
@@ -40,33 +54,32 @@ export class CatsController {
     }
 
     @Patch('/:catID')
-    async editTodo(
-        @Param('catID') catID: string,
-        @Body('name') name: string,//notice you don't have validations :)
+    async updateCat(
+        @Param('catID') catID: number,
+        @Body('name') name: string,
         @Body('soul') soul: number,
     ) {
-        const editedCat = await this.catsService.editCat(catID, name, soul);
-        if (!editedCat) {
-            throw new NotFoundException('Cat does not exist!');
-        }
+
+        const editedCat = await this.catsService.updateCat(catID, name, soul);
+
         return {
-            message: 'Cat has been successfully updated',
             cat: editedCat,
         };
     }
 
     @Delete('/delete/:catID')
-    async deleteCat(@Param('catID') catID) {
+    async deleteCat(@Param('catID') catID: number) {
         const deletedCat = await this.catsService.deleteCat(catID);
-        if (!deletedCat) {
-            throw new NotFoundException('Cat does not exist!');
-        }
+
         return {
             message: 'Cat has been deleted!',
             cat: deletedCat,
         };
     }
 
-
+    @Get('/get/random')
+    async random() {
+        return await this.catsService.getRandomCat_()
+    }
 
 }

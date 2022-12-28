@@ -1,108 +1,120 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { Cat } from 'src/typeorm/entities/Cat';
+import { Chase, Success } from 'src/typeorm/entities/Chase';
+import { DataSource, Repository } from 'typeorm';
 import { CreateCatDTO } from './dto/create-cats.dto';
-
-type Cat = {
-    readonly id: string;
-    name: string;
-    soul: number;
-}
 
 @Injectable()
 export class CatsService {
 
-    private cats: Cat[] = [
-        {
-            id: "1",
-            name: 'Mitzi',
-            soul: 9
-        },
-        {
-            id: "2",
-            name: 'Luly',
-            soul: 9
 
-        },
-        {
-            id: "3",
-            name: 'Kitty',
-            soul: 9
-
-        }
-    ];
-
-    constructor() {
+    constructor(@InjectRepository(Cat)
+    private catRepository: Repository<Cat>
+    ) {
         setTimeout(() => {
             console.log("Im a cats service instance!");
         }, 1000);
     }
 
-    async addCat(createCatsDTO: CreateCatDTO): Promise<Cat> {
-        await this.cats.push(createCatsDTO);
-        return this.cats.at(-1);
+
+    async addCat(createCatsDTO: CreateCatDTO) {
+        const newCat = await this.catRepository.create({ ...createCatsDTO })
+        return await this.catRepository.save(newCat)
     }
 
-    async getCat(catID: string): Promise<Cat> {
-        const cat = this.cats.find((cat) => cat.id === catID);
+
+    async getCatById(id: number) {
+        const cat = await this.catRepository.findOne({
+            where:
+                { id },
+
+        })
         return cat
     }
 
-    async getCats(): Promise<Cat[]> {
-        return this.cats;
+
+    async getCats() {
+        return await this.catRepository.find()
     }
-    async editCat(catID: string, name: string, soul: number): Promise<Cat> {
-        const cat = this.cats.find((cat) => cat.id === catID);
+
+
+    async updateCat(id: number, name: string, soul: number) {
+        const cat = await this.catRepository.findOne({
+            where:
+                { id }
+        })
         if (!cat) {
-            throw new NotFoundException('Cats does not exist!');
+            return 'CAT NOT FOUND'
         }
-        const catIndex = this.cats.findIndex((cat) => cat.id === catID);
-        const editedCat = { ...cat }
-        if (name) {
-            editedCat.name = name
+        if (!name && soul === undefined) {
+            return 'NO UPDATED'
         }
-        if (soul > 0) {
-            editedCat.soul = soul
-        }
-        this.cats[catIndex] = editedCat
-        if (soul < 1) {
-            const delCat = await this.deleteCat(catID)
-            console.log("delete....", delCat);
-            editedCat.soul = 0
+        // if (soul < 1) {
+        //     const delCat = await this.deleteCat(id)
+        //     console.log("delete....", delCat);
 
-            return delCat[0]
-        }
-        return this.cats[catIndex]
+        // }
 
-    }
 
-    async deleteCat(catID: string): Promise<any> {
-        const catIndex = this.cats.findIndex((cat) => cat.id === catID);
-        return this.cats.splice(catIndex, 1)
+        const upCat = this.catRepository.update({ id }, { name, soul })
+        return upCat;
+
 
     }
 
 
-    async getRandomCat(): Promise<any> {
-        function getRndInteger(min: number, max: number) {
-            return Math.floor(Math.random() * (max - min)) + min;
-        }
-
-        const cats = await this.getCats()
-
-        const random = getRndInteger(0, cats.length)
-
-        const cat = cats[random];
+    async deleteCat(id: number) {
+        const cat = await this.catRepository.findOne({
+            where:
+                { id }
+        })
         if (!cat) {
+            return 'CAT NOT FOUND'
+        }
+        this.catRepository.delete({ id })
+        return 'Cat is deleted'
+
+
+
+    }
+
+    async getRandomCat_() {
+
+        const randomCat = await this.catRepository
+            .createQueryBuilder().select().where('cat.soul>0')
+            .orderBy('RAND()')
+            .getOne()
+        if (!randomCat) {
             console.log("GAME OVER");
 
         } else {
 
-            console.log(`Lets chase ${cat.name} cat!!`);
-            return cat
+            console.log(`Lets chase ${randomCat.name} cat!!`);
+            return randomCat;
         }
+
+
     }
 
+    async getCatsSuccess() {
+        const cats = await this.catRepository.find({
+            where:
+                { chases: { success: Success.No } },
 
+            relations: ['chases']
+
+        })
+        return cats
+    }
+
+    async getDogAndCatById(id: number) {
+        const resulte = await this.catRepository.createQueryBuilder('cat')
+            .select(['cat.name'])
+            .leftJoin(Chase, "chases", "cat.id=chases.catId")
+            .where(`dogId=${id}`)
+            .getMany()
+
+        return resulte
+    }
 }
-/** All functions here are not really async functions, so for now it makes sense to decalre them as sync.
-* In the next exercise they will be async function, so you don't have to change it. But just letting you know:)
-*/

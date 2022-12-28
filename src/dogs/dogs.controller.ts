@@ -1,15 +1,16 @@
 import {
     Controller, Get,
-    Res,
-    HttpStatus,
     Param,
     NotFoundException,
     Body,
     Delete,
     Post,
     Patch,
+    ParseIntPipe,
 } from '@nestjs/common';
 import { CatsService } from 'src/cats/cats.service';
+import { CreateCatDTO } from 'src/cats/dto/create-cats.dto';
+import { Success } from 'src/typeorm/entities/Chase';
 import { CreateDogsDTO } from './create-dogs.dto';
 import { DogsService } from './dogs.service';
 
@@ -27,9 +28,27 @@ export class DogsController {
         };
     }
     @Get('/:dogID')
-    async getCat(@Param('dogID') dogID: string) {
+    async getDog(@Param('dogID') dogID: number) {
 
-        const dog = await this.dogsService.getDog(dogID);
+        const dog = await this.dogsService.getDogById(dogID);
+        if (!dog) {
+            throw new NotFoundException('Dog does not exist!');
+        }
+        return dog;
+    }
+    @Get('/success/:dogID')
+    async getSuccessDog(@Param('dogID') dogID: number) {
+
+        const dog = await this.dogsService.getDogAndSuccessById(dogID);
+        if (!dog) {
+            throw new NotFoundException('Dog does not exist!');
+        }
+        return dog;
+    }
+    @Get('/cat/:dogID')
+    async getDogAndCats(@Param('dogID') dogID: number) {
+
+        const dog = await this.dogsService.getDogAndCatById(dogID);
         if (!dog) {
             throw new NotFoundException('Dog does not exist!');
         }
@@ -37,21 +56,18 @@ export class DogsController {
     }
 
     @Get('/')
-    async getCats() {
+    async getDogs() {
         const dogs = await this.dogsService.getDogs()
         return dogs;
     }
 
     @Patch('/:dogID')
-    async editTodo(
-        @Param('dogID') dogID: string,
+    async edit(
+        @Param('dogID') dogID: number,
         @Body('name') name: string,
         @Body('count') count: number,
     ) {
-        const editedDog = await this.dogsService.editDog(dogID, name, count);
-        if (!editedDog) {
-            throw new NotFoundException('Dog does not exist!');
-        }
+        const editedDog = await this.dogsService.updateDog(dogID, name, count);
         return {
             message: 'Dog has been successfully updated',
             dog: editedDog,
@@ -59,7 +75,7 @@ export class DogsController {
     }
 
     @Delete('/delete/:dogID')
-    async deleteCat(@Param('dogID') dogID: string) {
+    async deleteDog(@Param('dogID') dogID: number) {
         const deletedDog = await this.dogsService.deleteDog(dogID);
         if (!deletedDog) {
             throw new NotFoundException('Dog does not exist!');
@@ -71,7 +87,7 @@ export class DogsController {
     }
 
     @Post('/play/:dogID')
-    async play(@Param('dogID') dogID: string) {
+    async play(@Param('dogID') dogID: number) {
         return await this.dogsService.play(dogID)
     }
 
